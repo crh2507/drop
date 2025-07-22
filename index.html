@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+ <meta name="theme-color" content="#000000"/>
+ <title>MemeDrop</title>
+ <link rel="manifest" href="manifest.json"/>
+ <link rel="stylesheet" href="style.css"/>
+ <script defer src="app.js"></script>
+</head>
+<body>
+ <div class="app-container">
+   <h1>📲 MemeDrop</h1>
+   <p class="subtitle">Drop a meme to someone’s code!</p>
+
+   <form id="dropForm">
+     <input type="text" id="dropCode" placeholder="Enter Drop Code" required />
+     <input type="text" id="message" placeholder="Enter Message or Meme Caption" required />
+     <input type="file" id="memeFile" accept="image/*" />
+     <button type="submit">💥 Drop It</button>
+   </form>
+
+   <div id="dropLog">
+     <h2>📩 Drops Received</h2>
+     <ul id="dropList"></ul>
+   </div>
+ </div>
+
+ <div id="toast" class="toast hidden">📨 You’ve been dropped!</div>
+</body>
+</html>
