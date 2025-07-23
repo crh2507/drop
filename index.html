@@ -7,6 +7,9 @@
   <title>MemeDrop</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -29,42 +32,19 @@
   <div id="toast" class="toast hidden">📨 You’ve been dropped!</div>
 
   <script>
-    const dbName = 'MemeDropDB';
-    const storeName = 'drops';
+    // 🔥 Firebase config — replace with your actual keys
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
 
-    function openDB() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName, 1);
-        request.onupgradeneeded = event => {
-          const db = event.target.result;
-          db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-    }
-
-    async function saveDrop(drop) {
-      const db = await openDB();
-      const tx = db.transaction(storeName, 'readwrite');
-      tx.objectStore(storeName).add(drop);
-    }
-
-    async function loadDrops() {
-      const db = await openDB();
-      const tx = db.transaction(storeName, 'readonly');
-      const store = tx.objectStore(storeName);
-      const request = store.getAll();
-      request.onsuccess = () => {
-        const dropList = document.getElementById('dropList');
-        dropList.innerHTML = '';
-        request.result.forEach(drop => {
-          const li = document.createElement('li');
-          li.textContent = `${drop.code}: ${drop.message}`;
-          dropList.appendChild(li);
-        });
-      };
-    }
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
 
     function generateDropCode() {
       const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -73,15 +53,39 @@
       ).join('');
     }
 
+    async function saveDrop(code, message, file) {
+      const fileRef = storage.ref().child(`memes/${code}-${Date.now()}`);
+      await fileRef.put(file);
+      const fileURL = await fileRef.getDownloadURL();
+
+      await db.collection('drops').add({
+        code,
+        message,
+        fileURL,
+        timestamp: Date.now()
+      });
+    }
+
+    async function loadDrops() {
+      const snapshot = await db.collection('drops').orderBy('timestamp', 'desc').limit(20).get();
+      const dropList = document.getElementById('dropList');
+      dropList.innerHTML = '';
+      snapshot.forEach(doc => {
+        const drop = doc.data();
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${drop.code}</strong>: ${drop.message}<br><img src="${drop.fileURL}" width="200"/>`;
+        dropList.appendChild(li);
+      });
+    }
+
     document.getElementById('dropForm').addEventListener('submit', async e => {
       e.preventDefault();
       const code = document.getElementById('dropCode').value;
       const message = document.getElementById('message').value;
       const file = document.getElementById('memeFile').files[0];
 
-      const drop = { code, message, timestamp: Date.now() };
-      await saveDrop(drop);
-      loadDrops();
+      await saveDrop(code, message, file);
+      await loadDrops();
 
       document.getElementById('toast').classList.remove('hidden');
       setTimeout(() => document.getElementById('toast').classList.add('hidden'), 3000);
